@@ -38,6 +38,12 @@ namespace octomap {
     this->setScanGraph(graph);
   }
 
+  TrajectoryDrawer::TrajectoryDrawer(const MapCollection<MapNode<OcTree>>& collection)
+  : ScanGraphDrawer(), m_trajectoryVertexArray(NULL), m_trajectoryColorArray(NULL), m_trajectorySize(0)
+  {
+    this->setCollection(collection);
+  }
+
   TrajectoryDrawer::~TrajectoryDrawer() {
     clear();
 
@@ -104,5 +110,43 @@ namespace octomap {
     }
   }
 
+ void TrajectoryDrawer::setCollection(const MapCollection<MapNode<OcTree>>& collection)
+ {
+
+    clear();
+
+    m_trajectorySize = collection.size();
+    m_trajectoryVertexArray = new GLfloat[m_trajectorySize * 3];
+    m_trajectoryColorArray = new GLfloat[m_trajectorySize * 4];
+
+    uint i = 0;
+    for (auto it = collection.begin(); it != collection.end(); it++) 
+    {
+        m_trajectoryVertexArray[i] = (*it)->getOrigin().trans().x();
+        m_trajectoryVertexArray[i+1] = (*it)->getOrigin().trans().y();
+        m_trajectoryVertexArray[i+2] = (*it)->getOrigin().trans().z();
+        i+=3;
+    }
+
+    static const std::array<double, 3> colorA = {0, 0, 1.0};
+    static const std::array<double, 3> colorB = {1.0, 0, 0};
+
+    m_trajectoryColorArray[0] = colorA[0]; // r
+    m_trajectoryColorArray[1] = colorA[1]; // g
+    m_trajectoryColorArray[2] = colorA[2]; // b
+    m_trajectoryColorArray[3] = 1.; // alpha
+
+    for (unsigned int j=4; j < m_trajectorySize*4; j+=4) 
+    {
+        std::array<double, 3> color;
+        double val = ((double) j) / 4.0 / ((double) m_trajectorySize);
+        for (int i = 0; i < 3; ++i)
+            color[i] = colorA[i] + val * (colorB[i] - colorA[i]);
+        m_trajectoryColorArray[j]   = color[0]; // r
+        m_trajectoryColorArray[j+1] = color[1]; // g
+        m_trajectoryColorArray[j+2] = color[2]; // b
+        m_trajectoryColorArray[j+3] = 1.; // alpha
+    }
 }
 
+}

@@ -48,6 +48,7 @@
 
 #include <octomap/AbstractOcTree.h>
 #include <octomap/OcTreeBase.h>
+#include <octomap/MapCollection.h>
 #include <octovis/OcTreeRecord.h>
 
 namespace octomap {
@@ -80,6 +81,7 @@ namespace octomap {
     void on_actionExit_triggered();
     void on_actionOpen_file_triggered();
     void on_actionOpen_graph_incremental_triggered();
+    void on_actionOpen_collection_triggered();
     void on_actionSave_file_triggered();
     void on_actionExport_view_triggered();
     void on_actionExport_sequence_triggered(bool checked);
@@ -156,6 +158,11 @@ namespace octomap {
     void loadGraph(bool completeGraph = true);
 
     /**
+     * Finishes loading a Collection of Octrees, from .hot
+     */
+    void loadCollection();
+
+    /**
      * Adds a scan from the graph to the OcTree
      */
     void addNextScan();
@@ -172,7 +179,7 @@ namespace octomap {
     void openTree();
 
     // EXPERIMENTAL
-    // open a map collection (.hot-file)
+    // open a map collection (.hot)
     void openMapCollection();
 
 
@@ -200,7 +207,9 @@ namespace octomap {
     std::map<int, OcTreeRecord> m_octrees;
  
     ScanGraph* m_scanGraph;
+    MapCollection<MapNode<OcTree>>* m_collection;
     ScanGraph::iterator m_nextScanToAdd;
+    MapCollection<MapNode<OcTree>>::iterator m_nextOctreeToAdd;
 
     Ui::ViewerGuiClass ui;
     ViewerWidget* m_glwidget;

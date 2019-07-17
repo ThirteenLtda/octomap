@@ -34,10 +34,12 @@ namespace octomap {
   public:
     TrajectoryDrawer();
     TrajectoryDrawer(const ScanGraph& graph);
+    TrajectoryDrawer(const MapCollection<MapNode<OcTree>>& collection);
     virtual ~TrajectoryDrawer();
     virtual void draw() const;
     virtual void clear();
     virtual void setScanGraph(const octomap::ScanGraph& graph);
+    virtual void setCollection(const MapCollection<MapNode<OcTree>>& collection);
 
   protected:
     GLfloat* m_trajectoryVertexArray;

@@ -34,6 +34,7 @@
     </widget>
     <addaction name="actionOpen_file"/>
     <addaction name="actionOpen_graph_incremental"/>
+    <addaction name="actionOpen_collection"/>
     <addaction name="actionReload_Octree"/>
     <addaction name="separator"/>
     <addaction name="actionSave_file"/>
@@ -367,6 +368,15 @@
    </property>
    <property name="text">
     <string>Open graph incremental...</string>
+   </property>
+  </action>
+  <action name="actionOpen_collection">
+   <property name="icon">
+    <iconset resource="../../src/icons.qrc">
+     <normaloff>:/icons/document-open.png</normaloff>:/icons/document-open.png</iconset>
+   </property>
+   <property name="text">
+    <string>Open Collection</string>
    </property>
   </action>
   <action name="actionExport_view">

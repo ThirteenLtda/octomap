@@ -38,6 +38,7 @@
 #endif
 
 #include <octomap/octomap.h>
+#include <octomap/MapCollection.h>
 
 namespace octomap {
 
@@ -105,7 +106,8 @@ namespace octomap {
     *
     * @param graph ScanGraph to be visualized
     */
-    virtual void setScanGraph(const octomap::ScanGraph& graph) = 0;
+    virtual void setScanGraph(const ScanGraph& graph) = 0;
+    virtual void setCollection(const MapCollection<MapNode<OcTree>>& collection) = 0;
   };
 
 }
