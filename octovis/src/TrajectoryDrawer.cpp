@@ -120,11 +120,13 @@ namespace octomap {
     m_trajectoryColorArray = new GLfloat[m_trajectorySize * 4];
 
     uint i = 0;
-    for (auto it = collection.begin(); it != collection.end(); it++) 
+    for (size_t index = 0; index < collection.size(); ++index) 
     {
-        m_trajectoryVertexArray[i] = (*it)->getOrigin().trans().x();
-        m_trajectoryVertexArray[i+1] = (*it)->getOrigin().trans().y();
-        m_trajectoryVertexArray[i+2] = (*it)->getOrigin().trans().z();
+        MapNode<OcTree>* node;
+        collection.loadNode(index, node);
+        m_trajectoryVertexArray[i] = node->getOrigin().trans().x();
+        m_trajectoryVertexArray[i+1] = node->getOrigin().trans().y();
+        m_trajectoryVertexArray[i+2] = node->getOrigin().trans().z();
         i+=3;
     }
 

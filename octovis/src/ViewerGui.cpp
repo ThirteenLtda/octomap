@@ -363,8 +363,10 @@ void ViewerGui::gotoFirstScan(){
     {
         showInfo("Inserting first tree node... ", true);
         QApplication::setOverrideCursor(Qt::WaitCursor);
-        m_nextOctreeToAdd = m_collection->begin();
-        OcTree* tree = new OcTree(*(*m_nextOctreeToAdd)->getMap());
+        m_nextOctreeToAdd = 0;
+        MapNode<OcTree>* node;
+        m_collection->loadNode(m_nextOctreeToAdd, node);
+        OcTree* tree = node->getMap();
         this->addOctree(tree, DEFAULT_OCTREE_ID);
         QApplication::restoreOverrideCursor();
         showOcTree();
@@ -398,9 +400,13 @@ void ViewerGui::addNextScan(){
     {
         showInfo("Inserting next tree node... ", true);
         QApplication::setOverrideCursor(Qt::WaitCursor);
-        if (m_nextOctreeToAdd != m_collection->end()) 
+        m_nextOctreeToAdd = (m_nextOctreeToAdd >= m_collection->size()) ? 
+            m_collection->size() - 1 : m_nextOctreeToAdd;
+        if (m_nextOctreeToAdd < m_collection->size()) 
         {
-            OcTree* tree = new OcTree(*(*m_nextOctreeToAdd)->getMap());
+            MapNode<OcTree>* node;
+            m_collection->loadNode(m_nextOctreeToAdd, node);
+            OcTree* tree = node->getMap();
             this->addOctree(tree, DEFAULT_OCTREE_ID);
             m_nextOctreeToAdd++;
         }
@@ -416,10 +422,7 @@ void ViewerGui::addNextScans(unsigned scans)
             addNextScan();
     if (m_collection)
     {
-        for (unsigned i = 0; i < scans; ++i)
-            if (m_nextOctreeToAdd + 1 != m_collection->end())
-                ++m_nextOctreeToAdd;
-            else break;
+        m_nextOctreeToAdd += scans;
         addNextScan();
     }
 }
@@ -549,8 +552,6 @@ void ViewerGui::openOcTree(){
   }
 }
 
-
-// EXPERIMENTAL
 void ViewerGui::openMapCollection() {
 
     OCTOMAP_DEBUG("Opening hierarchy from %s...\n", m_filename.c_str());
@@ -558,22 +559,13 @@ void ViewerGui::openMapCollection() {
     showInfo("Loading collection from file " + QString(m_filename.c_str()) );
 
     if (m_collection) delete m_collection;
-    m_collection = new octomap::MapCollection<octomap::MapNode<octomap::OcTree>>
-        (m_filename);
+    m_collection = new octomap::MapCollection<octomap::MapNode<octomap::OcTree>>();
+    m_collection->load(m_filename);
     loadCollection();
 }
 
 void ViewerGui::loadCollection()
 {
-    std::ifstream infile(m_filename.c_str(), std::ios_base::in |std::ios_base::binary);
-    if (!infile.is_open()) 
-    {
-        QMessageBox::warning(this, "File error", "Cannot open OcTree file", 
-            QMessageBox::Ok);
-        return;
-    }
-    infile.close();
-
     ui.actionSettings->setEnabled(true);
     ui.actionPointcloud->setEnabled(false);
     ui.actionPointcloud->setChecked(false);
@@ -590,8 +582,7 @@ void ViewerGui::loadCollection()
     unsigned graphSize = m_collection->size();
     unsigned currentScan;
 
-    m_nextOctreeToAdd = m_collection->begin();
-    this->addOctree((*m_nextOctreeToAdd)->getMap(), DEFAULT_OCTREE_ID);
+    m_nextOctreeToAdd = 0;
     addNextScan();
     currentScan = 1;
     

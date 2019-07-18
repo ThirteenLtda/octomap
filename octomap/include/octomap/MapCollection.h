@@ -63,6 +63,10 @@ namespace octomap {
 
     bool writePointcloud(std::string filename);
     bool write(std::string filename);
+    bool save(MAPNODE* node, std::string filename);
+    bool load(const std::string& filename);
+    bool loadNode(std::string id, MAPNODE*& node) const;
+    bool loadNode(size_t id, MAPNODE*& node) const;
 
     // TODO
     void insertScan(const Pointcloud& scan, const octomap::point3d& sensor_origin,
@@ -76,7 +80,7 @@ namespace octomap {
     iterator end()   { return nodes.end(); }
     const_iterator begin() const { return nodes.begin(); }
     const_iterator end() const { return nodes.end(); }
-    size_t size() const { return nodes.size(); }
+    size_t size() const { return m_size; }
         
   protected:
     void clear();
@@ -87,13 +91,19 @@ namespace octomap {
     // TODO
     MAPNODE* associate(const Pointcloud& scan);
 
-    static void splitPathAndFilename(std::string &filenamefullpath, std::string* path, std::string *filename);
-    static std::string combinePathAndFilename(std::string path, std::string filename);
+    void splitPathAndFilename(const std::string &filenamefullpath, std::string* path, std::string *filename) const;
+    std::string combinePathAndFilename(std::string path, std::string filename) const;
     static bool readTagValue(std::string tag, std::ifstream &infile, std::string* value);
     
   protected:
 
     std::vector<MAPNODE*> nodes;
+    size_t m_size;
+
+    bool saved_file = false;
+    std::ofstream outfile;
+    std::string saved_filename;
+    std::string loaded_filename;
   };
 
 } // end namespace

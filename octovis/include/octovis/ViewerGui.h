@@ -209,7 +209,7 @@ namespace octomap {
     ScanGraph* m_scanGraph;
     MapCollection<MapNode<OcTree>>* m_collection;
     ScanGraph::iterator m_nextScanToAdd;
-    MapCollection<MapNode<OcTree>>::iterator m_nextOctreeToAdd;
+    size_t m_nextOctreeToAdd;
 
     Ui::ViewerGuiClass ui;
     ViewerWidget* m_glwidget;

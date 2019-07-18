@@ -38,12 +38,13 @@
 namespace octomap {
   
   template <class MAPNODE>
-  MapCollection<MAPNODE>::MapCollection() {
-  }
+  MapCollection<MAPNODE>::MapCollection():
+  m_size(0) {}
 
   template <class MAPNODE>
   MapCollection<MAPNODE>::MapCollection(std::string filename) {
     this->read(filename);
+    m_size = nodes.size();
   }
 
   template <class MAPNODE>
@@ -58,6 +59,7 @@ namespace octomap {
     // for(typename std::vector<MAPNODE*>::iterator it= nodes.begin(); it != nodes.end(); ++it)
     //   delete *it;
     nodes.clear();
+    m_size = 0;
   }
 
   template <class MAPNODE>
@@ -120,6 +122,158 @@ namespace octomap {
     infile.close();
     return true;
   }
+
+template <class MAPNODE>
+bool MapCollection<MAPNODE>::load(const std::string& filename)
+{
+    loaded_filename = filename;
+    std::ifstream infile;
+    infile.open(loaded_filename.c_str(), std::ifstream::in);
+    if(!infile.is_open())
+    {
+        OCTOMAP_ERROR_STR("Could not open "<< loaded_filename << 
+            ". MapCollection not loaded.");
+        return false;
+    }
+
+    bool ok = true;
+    m_size = 0;
+    while(ok)
+    {    
+        std::string nodeID;
+        ok = readTagValue("MAPNODEID", infile, &nodeID);
+        if(!ok) break;
+        ++m_size;
+    }
+    return true;
+}
+
+  template <class MAPNODE>
+  bool MapCollection<MAPNODE>::loadNode(std::string id, 
+    MAPNODE*& node) const
+{
+
+    std::string path;
+    std::string filename;
+    splitPathAndFilename(loaded_filename, &path, &filename);
+
+    std::ifstream infile;
+    infile.open(loaded_filename.c_str(), std::ifstream::in);
+    if(!infile.is_open()){
+    OCTOMAP_ERROR_STR("Could not open "<< loaded_filename << ". MapCollection not loaded.");
+    return false;
+    }
+
+    bool ok = true;
+    while(ok)
+    {    
+        std::string nodeID;
+        ok = readTagValue("MAPNODEID", infile, &nodeID);
+        if(!ok) break;
+        if (id.compare(nodeID) != 1) continue;
+
+        std::string mapNodeFilename;
+        ok = readTagValue("MAPNODEFILENAME", infile, &mapNodeFilename);
+        if(!ok)
+        {
+            OCTOMAP_ERROR_STR("Could not read MAPNODEFILENAME.");
+            break;
+        }
+
+        std::string poseStr;
+        ok = readTagValue("MAPNODEPOSE", infile, &poseStr);
+        std::istringstream poseStream(poseStr);
+        float x,y,z;
+        poseStream >> x >> y >> z;
+        double roll, pitch, yaw;
+        poseStream >> roll >> pitch >> yaw;
+        ok = ok && !poseStream.fail();
+        if(!ok)
+        {
+            OCTOMAP_ERROR_STR("Could not read MAPNODEPOSE.");
+            break;
+        }
+
+        octomap::pose6d origin(x, y, z, roll, pitch, yaw);
+        node = new MAPNODE(combinePathAndFilename(path, mapNodeFilename), origin);
+        node->setId(nodeID);
+
+        if(!ok)
+        {
+            infile.close();
+            return false;
+        } 
+        break;
+    }
+    infile.close();
+    return true;
+}
+
+  template <class MAPNODE>
+  bool MapCollection<MAPNODE>::loadNode(size_t id, 
+    MAPNODE*& node) const
+{
+
+    std::string path;
+    std::string filename;
+    splitPathAndFilename(loaded_filename, &path, &filename);
+
+    std::ifstream infile;
+    infile.open(loaded_filename.c_str(), std::ifstream::in);
+    if(!infile.is_open()){
+    OCTOMAP_ERROR_STR("Could not open "<< loaded_filename << ". MapCollection not loaded.");
+    return false;
+    }
+
+    bool ok = true;
+    size_t counter = 0;
+    while(ok)
+    {    
+        std::string nodeID;
+        ok = readTagValue("MAPNODEID", infile, &nodeID);
+        if(!ok) break;
+        if (counter != id) 
+        {
+            ++counter;
+            continue;
+        }
+
+        std::string mapNodeFilename;
+        ok = readTagValue("MAPNODEFILENAME", infile, &mapNodeFilename);
+        if(!ok)
+        {
+            OCTOMAP_ERROR_STR("Could not read MAPNODEFILENAME.");
+            break;
+        }
+
+        std::string poseStr;
+        ok = readTagValue("MAPNODEPOSE", infile, &poseStr);
+        std::istringstream poseStream(poseStr);
+        float x,y,z;
+        poseStream >> x >> y >> z;
+        double roll, pitch, yaw;
+        poseStream >> roll >> pitch >> yaw;
+        ok = ok && !poseStream.fail();
+        if(!ok)
+        {
+            OCTOMAP_ERROR_STR("Could not read MAPNODEPOSE.");
+            break;
+        }
+
+        octomap::pose6d origin(x, y, z, roll, pitch, yaw);
+        node = new MAPNODE(combinePathAndFilename(path, mapNodeFilename), origin);
+        node->setId(nodeID);
+
+        if(!ok)
+        {
+            infile.close();
+            return false;
+        } 
+        break;    
+    }
+    infile.close();
+    return true;
+}
 
   template <class MAPNODE>
   void MapCollection<MAPNODE>::addNode( MAPNODE* node){
@@ -251,6 +405,36 @@ namespace octomap {
     return ok;
   }
 
+  template <class MAPNODE>
+  bool MapCollection<MAPNODE>::save(MAPNODE* node, std::string filename) {
+    
+    if (!saved_file)
+    {
+        saved_filename = filename;
+        outfile = std::ofstream(filename.c_str());
+        outfile << "#This file was generated by the save-method of MapCollection\n";
+        saved_file = true;
+    }
+    else outfile.open(saved_filename, std::ios::app);
+    
+    std::string prefix = saved_filename.substr(0, saved_filename.find_last_of('/')) + "/";
+
+    std::string id = node->getId();
+    pose6d origin = node->getOrigin();
+    std::string nodemapFilename = "nodemap_";
+    nodemapFilename.append(id);
+    nodemapFilename.append(".bt");
+
+    outfile << "MAPNODEID " << id << "\n";
+    outfile << "MAPNODEFILENAME "<< nodemapFilename << "\n";
+    outfile << "MAPNODEPOSE " << origin.x() << " " << origin.y() << " " << origin.z() << 
+        " " << origin.roll() << " " << origin.pitch() << " " << origin.yaw() << std::endl;
+    auto ok = node->writeMap(prefix + nodemapFilename);
+    outfile.close();
+    ++m_size;
+    return ok;
+  }
+
   // TODO
   template <class MAPNODE>
   void MapCollection<MAPNODE>::insertScan(const Pointcloud& scan, const octomap::point3d& sensor_origin,
@@ -281,9 +465,10 @@ namespace octomap {
     return 0;
   }
 
-  template <class MAPNODE>
-  void MapCollection<MAPNODE>::splitPathAndFilename(std::string &filenamefullpath, 
-                                                    std::string* path, std::string *filename) {
+template <class MAPNODE>
+void MapCollection<MAPNODE>::splitPathAndFilename(const std::string &filenamefullpath, 
+    std::string* path, std::string *filename) const 
+{
 #ifdef WIN32
     std::string::size_type lastSlash = filenamefullpath.find_last_of('\\');
 #else
@@ -298,8 +483,10 @@ namespace octomap {
     }
   }
 
-  template <class MAPNODE>
-  std::string MapCollection<MAPNODE>::combinePathAndFilename(std::string path, std::string filename) {
+template <class MAPNODE>
+std::string MapCollection<MAPNODE>::combinePathAndFilename(
+      std::string path, std::string filename) const 
+{
     std::string result = path;
     if(path != ""){
 #ifdef WIN32
@@ -315,9 +502,14 @@ namespace octomap {
   template <class MAPNODE>
   bool MapCollection<MAPNODE>::readTagValue(std::string tag, std::ifstream& infile, std::string* value) {
     std::string line;
-    while( getline(infile, line) ){
-      if(line.length() != 0 && line[0] != '#')
-        break;
+
+    while( getline(infile, line) )
+    {
+        if(line.length() != 0 && line[0] != '#')
+        {
+            size_t index = line.find(tag);
+            if (index != std::string::npos) break;
+        }
     }
     *value = "";
     std::string::size_type firstSpace = line.find(' ');
