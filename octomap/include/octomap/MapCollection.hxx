@@ -412,7 +412,12 @@ bool MapCollection<MAPNODE>::load(const std::string& filename)
     }
     else outfile.open(saved_filename, std::ios::app);
     
-    std::string prefix = saved_filename.substr(0, saved_filename.find_last_of('/')) + "/";
+    std::string prefix;
+    std::size_t found = saved_filename.find("/");
+    if (found!=std::string::npos)
+        prefix = saved_filename.substr(0, saved_filename.find_last_of('/')) 
+            + "/";
+    else prefix = "";
 
     std::string id = node->getId();
     pose6d origin = node->getOrigin();
