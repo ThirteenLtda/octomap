@@ -118,15 +118,29 @@ namespace octomap {
     m_trajectorySize = collection.size();
     m_trajectoryVertexArray = new GLfloat[m_trajectorySize * 3];
     m_trajectoryColorArray = new GLfloat[m_trajectorySize * 4];
+    
+    std::vector<octomap::pose6d> poses;
+    std::ifstream infile;
+    infile.open(collection.getLoadedFilename().c_str());
+    if(!infile.is_open()) return;
+
+    bool ok = true;
+    while(ok)
+    {    
+        std::string poseStr;
+        ok = collection.readTagValue("MAPNODEPOSE", infile, &poseStr);
+        octomap::pose6d origin;
+        ok = ok && collection.extractPoseFromStr(poseStr, origin);
+        if (ok)
+            poses.push_back(origin);
+    }
 
     uint i = 0;
     for (size_t index = 0; index < collection.size(); ++index) 
     {
-        MapNode<OcTree>* node;
-        collection.loadNode(index, node);
-        m_trajectoryVertexArray[i] = node->getOrigin().trans().x();
-        m_trajectoryVertexArray[i+1] = node->getOrigin().trans().y();
-        m_trajectoryVertexArray[i+2] = node->getOrigin().trans().z();
+        m_trajectoryVertexArray[i] = poses[index].trans().x();
+        m_trajectoryVertexArray[i+1] = poses[index].trans().y();
+        m_trajectoryVertexArray[i+2] = poses[index].trans().z();
         i+=3;
     }
 

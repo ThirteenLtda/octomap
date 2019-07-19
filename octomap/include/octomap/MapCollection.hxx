@@ -248,19 +248,14 @@ bool MapCollection<MAPNODE>::load(const std::string& filename)
 
         std::string poseStr;
         ok = readTagValue("MAPNODEPOSE", infile, &poseStr);
-        std::istringstream poseStream(poseStr);
-        float x,y,z;
-        poseStream >> x >> y >> z;
-        double roll, pitch, yaw;
-        poseStream >> roll >> pitch >> yaw;
-        ok = ok && !poseStream.fail();
+        octomap::pose6d origin;
+        ok = ok && extractPoseFromStr(poseStr, origin);
         if(!ok)
         {
             OCTOMAP_ERROR_STR("Could not read MAPNODEPOSE.");
             break;
         }
 
-        octomap::pose6d origin(x, y, z, roll, pitch, yaw);
         node = new MAPNODE(combinePathAndFilename(path, mapNodeFilename), origin);
         node->setId(nodeID);
 
@@ -499,10 +494,11 @@ std::string MapCollection<MAPNODE>::combinePathAndFilename(
     return result;
   }
 
-  template <class MAPNODE>
-  bool MapCollection<MAPNODE>::readTagValue(std::string tag, std::ifstream& infile, std::string* value) {
+ template <class MAPNODE>
+ bool MapCollection<MAPNODE>::readTagValue(std::string tag, std::ifstream& infile, 
+    std::string* value) const {
+    
     std::string line;
-
     while( getline(infile, line) )
     {
         if(line.length() != 0 && line[0] != '#')
@@ -519,5 +515,19 @@ std::string MapCollection<MAPNODE>::combinePathAndFilename(
     } 
     else return false;
   }
+
+template <class MAPNODE>
+bool MapCollection<MAPNODE>::extractPoseFromStr(const std::string &poseStr, 
+    octomap::pose6d& pose) const
+{
+    std::istringstream poseStream(poseStr);
+    float x,y,z;
+    poseStream >> x >> y >> z;
+    double roll, pitch, yaw;
+    poseStream >> roll >> pitch >> yaw;
+    if (poseStream.fail()) return false;
+    pose = octomap::pose6d(x, y, z, roll, pitch, yaw);
+    return true;
+}
 
 } // namespace
