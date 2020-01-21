@@ -1179,4 +1179,15 @@ namespace octomap {
     return ncells;
   }
 
+template <class NODE>
+void OccupancyOcTreeBase<NODE>::updateMapCells(
+  const std::vector<std::pair<octomap::point3d, float>>& cells_intensities)
+{
+  for (auto& cell_intensity : cells_intensities)
+  {
+      auto coord = cell_intensity.first;
+      this->updateNode(coord.x(), coord.y(), coord.z(), cell_intensity.second);
+  }
+}
+
 } // namespace

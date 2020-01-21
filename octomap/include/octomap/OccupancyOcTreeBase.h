@@ -484,6 +484,14 @@ namespace octomap {
     */  
     std::vector<std::pair<octomap::point3d, float>> getOccupiedCells(
         const double& resolution);
+
+    //! Update map with provided cells
+    /*!
+        \param cells_intensities
+    */
+    void updateMapCells(const std::vector<std::pair<octomap::point3d, float>>& 
+        cells_intensities);
+
   protected:
     /// Constructor to enable derived classes to change tree constants.
     /// This usually requires a re-implementation of some core tree-traversal functions as well!
@@ -507,7 +515,6 @@ namespace octomap {
     void updateInnerOccupancyRecurs(NODE* node, unsigned int depth);
     
     void toMaxLikelihoodRecurs(NODE* node, unsigned int depth, unsigned int max_depth);
-
 
   protected:
     bool use_bbx_limit;  ///< use bounding box for queries (needs to be set)?
