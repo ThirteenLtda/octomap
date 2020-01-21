@@ -69,6 +69,11 @@ namespace octomap {
     }
   }
 
+  void PointcloudDrawer::setCollection(const MapCollection<MapNode<OcTree>>& collection)
+  {
+      clear();
+  }
+
   void PointcloudDrawer::clear(){
 
     if (m_numberPoints != 0) {

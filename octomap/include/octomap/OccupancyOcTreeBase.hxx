@@ -33,6 +33,8 @@
 
 #include <bitset>
 #include <algorithm>
+#include <iomanip>
+#include <boost/lexical_cast.hpp>
 
 #include <octomap/MCTables.h>
 
@@ -1124,5 +1126,68 @@ namespace octomap {
     else
       occupancyNode.setLogOdds(this->clamping_thres_min);
   }
+
+  template <class NODE>
+  std::vector<std::pair<octomap::point3d, float>> 
+    OccupancyOcTreeBase<NODE>::getOccupiedCells()
+  {
+    std::vector<std::pair<octomap::point3d, float>> cells;
+    this->expand();
+    for(auto it = this->begin_tree(), end = this->end_tree(); it!= end; ++it)
+        if (this->isNodeOccupied(*it) && it.getSize() == this->getResolution())
+            cells.push_back(std::make_pair<octomap::point3d, float>(
+                it.getCoordinate(), it->getValue()));
+    this->prune();
+    return cells;
+  }
+
+  template <class NODE>
+  std::vector<std::pair<octomap::point3d, float>> 
+    OccupancyOcTreeBase<NODE>::getOccupiedCells(const double& resolution)
+  {
+    if (resolution <= this->getResolution())
+        return this->getOccupiedCells();
+
+    std::setprecision(5);
+    auto cells = this->getOccupiedCells();
+    float nres_2 = (float) resolution / 2;
+    std::map<std::string, std::pair<octomap::point3d, float>> map;
+    
+    for (auto itr = cells.begin(); itr != cells.end(); ++itr) 
+    { 
+        auto pos = itr->first;
+        auto cell = octomap::point3d(
+            floor(pos.x() / resolution) * resolution + nres_2,
+            floor(pos.y() / resolution) * resolution + nres_2, 
+            floor(pos.z() / resolution) * resolution + nres_2);
+        std::string hash_string = boost::lexical_cast<std::string>(cell.x()) +
+            boost::lexical_cast<std::string>(cell.y()) + 
+            boost::lexical_cast<std::string>(cell.z());
+        auto it = map.find(hash_string);
+        if (it == map.end())
+            map.insert(
+                std::pair<std::string, std::pair<octomap::point3d, float>>
+                (hash_string, std::make_pair(cell, itr->second)));
+        else
+            it->second = std::make_pair(cell, 
+                    std::max(it->second.second, itr->second));
+    } 
+    
+    std::vector<std::pair<octomap::point3d, float>> ncells;
+    for (auto it = map.begin(); it != map.end(); ++it)
+        ncells.push_back(it->second);
+    return ncells;
+  }
+
+template <class NODE>
+void OccupancyOcTreeBase<NODE>::updateMapCells(
+  const std::vector<std::pair<octomap::point3d, float>>& cells_intensities)
+{
+  for (auto& cell_intensity : cells_intensities)
+  {
+      auto coord = cell_intensity.first;
+      this->updateNode(coord.x(), coord.y(), coord.z(), cell_intensity.second);
+  }
+}
 
 } // namespace

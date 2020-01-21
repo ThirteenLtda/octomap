@@ -462,6 +462,36 @@ namespace octomap {
     /// converts the node to the maximum likelihood value according to the tree's parameter for "occupancy"
     virtual void nodeToMaxLikelihood(NODE& occupancyNode) const;
 
+    //! Function that returns all xyz (center) of occupied cells in given tree.
+    //! It expands the tree first.
+    /*!
+        \param map given tree
+        \return occupied cells (center xyz) and intensities
+    */
+    std::vector<std::pair<octomap::point3d, float>> getOccupiedCells();
+
+    //! This method changes cells resolution, mapping high resolution cells into 
+    //! low resolution cells. How it works: an occupied cell (-0.05, 0.05, 0) at
+    //! 0.1 high resolution is mapped to an occupied cell (-0.5, 0.5, 0) at 1.0 low 
+    //! resolution. If there are different intensities for the same mapped cell, the 
+    //! greater is used, i.e. (-0.05, 0.05, 0) intensity 0.5 and (-0.15, 0.05, 0)
+    //! intensity 1.0 are both mapped to (-0.5, 0.5, 0) intensity 1.0.
+    /*!
+        \note new resolution should be bigger than tree->getResolution(), otherwise it will 
+        just return getOccupiedCells().
+        \param resolution new cell resolution  
+        \return new vector with cells in different resolution and intensity
+    */  
+    std::vector<std::pair<octomap::point3d, float>> getOccupiedCells(
+        const double& resolution);
+
+    //! Update map with provided cells
+    /*!
+        \param cells_intensities
+    */
+    void updateMapCells(const std::vector<std::pair<octomap::point3d, float>>& 
+        cells_intensities);
+
   protected:
     /// Constructor to enable derived classes to change tree constants.
     /// This usually requires a re-implementation of some core tree-traversal functions as well!
@@ -485,7 +515,6 @@ namespace octomap {
     void updateInnerOccupancyRecurs(NODE* node, unsigned int depth);
     
     void toMaxLikelihoodRecurs(NODE* node, unsigned int depth, unsigned int max_depth);
-
 
   protected:
     bool use_bbx_limit;  ///< use bounding box for queries (needs to be set)?

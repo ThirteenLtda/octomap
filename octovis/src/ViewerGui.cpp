@@ -28,7 +28,6 @@
 
 #include <octovis/ViewerGui.h>
 #include <octovis/ColorOcTreeDrawer.h>
-#include <octomap/MapCollection.h>
 //Dummy object definition to ensure VS2012 does not drop the StaticMemberInitializer, causing this tree failing to register.
 octomap::ColorOcTree colortreeTmp(0);
 
@@ -39,7 +38,7 @@ octomap::ColorOcTree colortreeTmp(0);
 namespace octomap{
 
 ViewerGui::ViewerGui(const std::string& filename, QWidget *parent, unsigned int initDepth)
-: QMainWindow(parent), m_scanGraph(NULL),
+: QMainWindow(parent), m_scanGraph(NULL), m_collection(NULL),
   m_trajectoryDrawer(NULL), m_pointcloudDrawer(NULL),
   m_cameraFollowMode(NULL),
   m_octreeResolution(0.1), m_laserMaxRange(-1.), m_occupancyThresh(0.5),
@@ -342,52 +341,90 @@ void ViewerGui::generateOctree() {
 // ==  incremental graph generation   =======================
 
 void ViewerGui::gotoFirstScan(){
-  if (m_scanGraph){
-    showInfo("Inserting first scan node into tree... ", true);
-    QApplication::setOverrideCursor(Qt::WaitCursor);
+    if (m_scanGraph)
+    {
+        showInfo("Inserting first scan node into tree... ", true);
+        QApplication::setOverrideCursor(Qt::WaitCursor);
 
-    m_nextScanToAdd = m_scanGraph->begin();
+        m_nextScanToAdd = m_scanGraph->begin();
 
-    // if (m_ocTree) delete m_ocTree;
-    // m_ocTree = new octomap::OcTree(m_octreeResolution);
-    OcTree* tree = new octomap::OcTree(m_octreeResolution);
-    this->addOctree(tree, DEFAULT_OCTREE_ID);
+        // if (m_ocTree) delete m_ocTree;
+        // m_ocTree = new octomap::OcTree(m_octreeResolution);
+        OcTree* tree = new octomap::OcTree(m_octreeResolution);
+        this->addOctree(tree, DEFAULT_OCTREE_ID);
 
-    addNextScan();
+        addNextScan();
 
-    QApplication::restoreOverrideCursor();
-    showOcTree();
-  }
+        QApplication::restoreOverrideCursor();
+        showOcTree();
+    }
+
+    if (m_collection)
+    {
+        showInfo("Inserting first tree node... ", true);
+        QApplication::setOverrideCursor(Qt::WaitCursor);
+        m_nextOctreeToAdd = 0;
+        MapNode<OcTree>* node;
+        m_collection->loadNode(m_nextOctreeToAdd, node);
+        OcTree* tree = node->getMap();
+        this->addOctree(tree, DEFAULT_OCTREE_ID);
+        QApplication::restoreOverrideCursor();
+        showOcTree();
+    }
 }
 
 void ViewerGui::addNextScan(){
 
-  if (m_scanGraph){
-    showInfo("Inserting next scan node into tree... ", true);
-
-    QApplication::setOverrideCursor(Qt::WaitCursor);
-    if (m_nextScanToAdd != m_scanGraph->end()){
-      OcTreeRecord* r;
-      if (!getOctreeRecord(DEFAULT_OCTREE_ID, r)) {
-        fprintf(stderr, "ERROR: OctreeRecord for id %d not found!\n", DEFAULT_OCTREE_ID);
-        return;
-      }
-      // not used with ColorOcTrees, omitting casts
-      ((OcTree*) r->octree)->insertPointCloud(**m_nextScanToAdd, m_laserMaxRange);
-      m_nextScanToAdd++;
+    if (m_scanGraph)
+    {
+        showInfo("Inserting next scan node into tree... ", true);
+        QApplication::setOverrideCursor(Qt::WaitCursor);
+        if (m_nextScanToAdd != m_scanGraph->end())
+        {
+            OcTreeRecord* r;
+            if (!getOctreeRecord(DEFAULT_OCTREE_ID, r)) 
+            {
+                fprintf(stderr, "ERROR: OctreeRecord for id %d not found!\n", 
+                    DEFAULT_OCTREE_ID);
+                return;
+            }
+            // not used with ColorOcTrees, omitting casts
+            ((OcTree*) r->octree)->insertPointCloud(**m_nextScanToAdd, m_laserMaxRange);
+            m_nextScanToAdd++;
+        }
+        QApplication::restoreOverrideCursor();
+        showOcTree();
     }
 
-    QApplication::restoreOverrideCursor();
-    showOcTree();
-
-  }
+    if (m_collection)
+    {
+        showInfo("Inserting next tree node... ", true);
+        QApplication::setOverrideCursor(Qt::WaitCursor);
+        m_nextOctreeToAdd = (m_nextOctreeToAdd >= m_collection->size()) ? 
+            m_collection->size() - 1 : m_nextOctreeToAdd;
+        if (m_nextOctreeToAdd < m_collection->size()) 
+        {
+            MapNode<OcTree>* node;
+            m_collection->loadNode(m_nextOctreeToAdd, node);
+            OcTree* tree = node->getMap();
+            this->addOctree(tree, DEFAULT_OCTREE_ID);
+            m_nextOctreeToAdd++;
+        }
+        QApplication::restoreOverrideCursor();
+        showOcTree();
+    }
 }
 
-
-void ViewerGui::addNextScans(unsigned scans){
-  for (unsigned i = 0; i < scans; ++i){
-    addNextScan();
-  }
+void ViewerGui::addNextScans(unsigned scans)
+{
+    if (m_scanGraph)
+        for (unsigned i = 0; i < scans; ++i)
+            addNextScan();
+    if (m_collection)
+    {
+        m_nextOctreeToAdd += scans;
+        addNextScan();
+    }
 }
 
 
@@ -515,38 +552,55 @@ void ViewerGui::openOcTree(){
   }
 }
 
-
-// EXPERIMENTAL
 void ViewerGui::openMapCollection() {
 
-  OCTOMAP_DEBUG("Opening hierarchy from %s...\n", m_filename.c_str());
+    OCTOMAP_DEBUG("Opening hierarchy from %s...\n", m_filename.c_str());
+    QApplication::setOverrideCursor(Qt::WaitCursor);
+    showInfo("Loading collection from file " + QString(m_filename.c_str()) );
 
-  std::ifstream infile(m_filename.c_str(), std::ios_base::in |std::ios_base::binary);
-  if (!infile.is_open()) {
-    QMessageBox::warning(this, "File error", "Cannot open OcTree file", QMessageBox::Ok);
-    return;
-  }
-  infile.close();
+    if (m_collection) delete m_collection;
+    m_collection = new octomap::MapCollection<octomap::MapNode<octomap::OcTree>>();
+    m_collection->load(m_filename);
+    loadCollection();
+}
 
-  MapCollection<MapNode<OcTree> > collection(m_filename);
-  int i=0;
-  for (MapCollection<MapNode<OcTree> >::iterator it = collection.begin();
-      it != collection.end(); ++it) {
-    OCTOMAP_DEBUG("Adding hierarchy node %s\n", (*it)->getId().c_str());
-    OcTree* tree = (*it)->getMap();
-    if (!tree)
-      OCTOMAP_ERROR("Error while reading node %s\n", (*it)->getId().c_str());
-    else {
-      OCTOMAP_DEBUG("Read tree with %zu tree nodes\n", tree->size());
+void ViewerGui::loadCollection()
+{
+    ui.actionSettings->setEnabled(true);
+    ui.actionPointcloud->setEnabled(false);
+    ui.actionPointcloud->setChecked(false);
+    ui.actionTrajectory->setEnabled(true);
+    ui.actionOctree_cells->setEnabled(false);
+    ui.actionOctree_cells->setChecked(true);
+    ui.actionOctree_structure->setEnabled(true);
+    ui.actionOctree_structure->setChecked(false);
+    ui.actionFree->setChecked(false);
+    ui.actionFree->setEnabled(true);
+    ui.actionReload_Octree->setEnabled(true);
+    ui.actionConvert_ml_tree->setEnabled(false);
+
+    unsigned graphSize = m_collection->size();
+    unsigned currentScan;
+
+    m_nextOctreeToAdd = 0;
+    addNextScan();
+    currentScan = 1;
+    
+    m_glwidget->resetView();
+    QApplication::restoreOverrideCursor();
+
+    emit changeNumberOfScans(graphSize);
+    emit changeCurrentScan(currentScan);
+    showInfo("Done (" +QString::number(currentScan)+ " of "+ QString::number(graphSize)+
+        " nodes)", true);
+
+    if (!m_trajectoryDrawer){
+        m_trajectoryDrawer = new TrajectoryDrawer();
     }
-    pose6d  origin = (*it)->getOrigin();
-    this->addOctree(tree, i, origin);
-    ++i;
-  }
-  setOcTreeUISwitches();
-  showOcTree();
-  m_glwidget->resetView();
-  OCTOMAP_DEBUG("done\n");
+    m_trajectoryDrawer->setCollection(*m_collection);
+
+    if (ui.actionTrajectory->isChecked())
+        m_glwidget->addSceneObject(m_trajectoryDrawer);
 }
 
 void ViewerGui::loadGraph(bool completeGraph) {
@@ -669,7 +723,7 @@ void ViewerGui::on_actionSettings_triggered(){
 void ViewerGui::on_actionOpen_file_triggered(){
   QString filename = QFileDialog::getOpenFileName(this,
                                                   tr("Open data file"), "",
-                                                  "All supported files (*.graph *.bt *.ot *.dat);;OcTree file (*.ot);;Bonsai tree file (*.bt);;Binary scan graph (*.graph);;Pointcloud (*.dat);;All files (*)");
+                                                  "All supported files (*.graph *.bt *.ot *.dat);;OcTree file (*.ot);;Bonsai tree file (*.bt);;Binary scan graph (*.graph);;Pointcloud (*.dat)");
   if (!filename.isEmpty()){
 #ifdef _WIN32      
     m_filename = std::string(filename.toLocal8Bit().data());
@@ -695,6 +749,23 @@ void ViewerGui::on_actionOpen_graph_incremental_triggered(){
 #endif
 
     openGraph(false);
+  }
+}
+
+void ViewerGui::on_actionOpen_collection_triggered(){
+  QString filename = QFileDialog::getOpenFileName(this,
+                                                  tr("Open collection file (at start)"), "",
+                                                  "Binary scan graph (*.hot)");
+  if (!filename.isEmpty()){
+    m_glwidget->clearAll();
+
+#ifdef _WIN32      
+    m_filename = std::string(filename.toLocal8Bit().data());
+#else       
+    m_filename = filename.toStdString();
+#endif
+
+    openMapCollection();
   }
 }
 

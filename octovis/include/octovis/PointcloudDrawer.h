@@ -41,6 +41,7 @@ namespace octomap {
     virtual void draw() const;
     virtual void clear();
     virtual void setScanGraph(const ScanGraph& graph);
+    virtual void setCollection(const MapCollection<MapNode<OcTree>>& collection);
 
   protected:
     GLfloat* m_pointsArray;
