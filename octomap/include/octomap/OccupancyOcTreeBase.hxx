@@ -1125,4 +1125,17 @@ namespace octomap {
       occupancyNode.setLogOdds(this->clamping_thres_min);
   }
 
+  template <class NODE>
+  std::vector<std::pair<octomap::point3d, float>> 
+    OccupancyOcTreeBase<NODE>::getOccupiedCells()
+  {
+    std::vector<std::pair<octomap::point3d, float>> cells;
+    this->expand();
+    for(auto it = this->begin_tree(), end = this->end_tree(); it!= end; ++it)
+        if (this->isNodeOccupied(*it) && it.getSize() == this->getResolution())
+            cells.push_back(std::make_pair<octomap::point3d, float>(
+                it.getCoordinate(), it->getValue()));
+    this->prune();
+    return cells;
+  }
 } // namespace

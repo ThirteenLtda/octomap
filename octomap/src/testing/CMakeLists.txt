@@ -23,6 +23,9 @@ if(BUILD_TESTING)
   ADD_EXECUTABLE(test_mapcollection test_mapcollection.cpp)
   TARGET_LINK_LIBRARIES(test_mapcollection octomap octomath)
 
+  ADD_EXECUTABLE(test_occupiedcells test_occupied_cells.cpp)
+  TARGET_LINK_LIBRARIES(test_occupiedcells octomap)
+
   ADD_EXECUTABLE(test_pruning test_pruning.cpp)
   TARGET_LINK_LIBRARIES(test_pruning octomap octomath)
 
@@ -46,4 +49,5 @@ if(BUILD_TESTING)
   ADD_TEST (NAME test_iterators     COMMAND test_iterators ${PROJECT_SOURCE_DIR}/share/data/geb079.bt)
   ADD_TEST (NAME test_mapcollection COMMAND test_mapcollection ${PROJECT_SOURCE_DIR}/share/data/mapcoll.txt)
   ADD_TEST (NAME test_color_tree    COMMAND test_color_tree)
+  ADD_TEST (NAME test_occupiedcells    COMMAND test_occupiedcells)
 endif()

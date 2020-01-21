@@ -462,6 +462,13 @@ namespace octomap {
     /// converts the node to the maximum likelihood value according to the tree's parameter for "occupancy"
     virtual void nodeToMaxLikelihood(NODE& occupancyNode) const;
 
+    //! Function that returns all xyz (center) of occupied cells in given tree.
+    //! It expands the tree first.
+    /*!
+        \param map given tree
+        \return occupied cells (center xyz) and intensities
+    */
+    std::vector<std::pair<octomap::point3d, float>> getOccupiedCells();
   protected:
     /// Constructor to enable derived classes to change tree constants.
     /// This usually requires a re-implementation of some core tree-traversal functions as well!
